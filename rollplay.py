@@ -6,6 +6,7 @@ import streamlit as st
 from secrets_config import get_prompts_from_secrets
 from interview_logic import (
     setup_llm, 
+    validate_api_key,
     add_newlines_by_period, 
     get_history_text,
     generate_question,
@@ -99,18 +100,24 @@ def show_api_key_form():
         submit_button = st.form_submit_button("APIキーを設定")
         
         if submit_button:
-            if api_key and api_key.startswith("sk-"):
-                try:
-                    # APIキーの妥当性をテスト
-                    st.session_state.llm = setup_llm(api_key)
-                    st.session_state.api_key = api_key
-                    st.session_state.current_stage = "profile"
-                    st.success("APIキーが正常に設定されました！")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"APIキーの設定に失敗しました: {str(e)}")
+            if api_key:
+                with st.spinner("APIキーを検証中..."):
+                    is_valid, message = validate_api_key(api_key)
+                    
+                if is_valid:
+                    try:
+                        # 検証済みのAPIキーでLLMを設定
+                        st.session_state.llm = setup_llm(api_key)
+                        st.session_state.api_key = api_key
+                        st.session_state.current_stage = "profile"
+                        st.success(message + " プロフィール入力に進みます。")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"LLMの設定に失敗しました: {str(e)}")
+                else:
+                    st.error(message)
             else:
-                st.error("有効なOpenAI APIキーを入力してください（sk-で始まる必要があります）")
+                st.error("APIキーを入力してください")
 
 def show_profile_form():
     st.header("📝 プロフィール入力")
