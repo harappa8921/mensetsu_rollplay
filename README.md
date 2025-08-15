@@ -16,7 +16,6 @@ LangChainとStreamlitを使った転職面接のロールプレイシステム�
 ├── rollplay.py          # Streamlit UI部分
 ├── interview_logic.py   # ビジネスロジック
 ├── secrets_config.py    # プロンプト管理（Secrets対応）
-├── prompts_template.py  # Streamlit Cloud Secrets設定例
 ├── prompts.py          # 実際のプロンプト（非公開、.gitignoreで除外）
 ├── requirements.txt     # 依存関係
 └── .gitignore          # Git除外設定
@@ -46,19 +45,7 @@ LangChainとStreamlitを使った転職面接のロールプレイシステム�
 
 3. **Secrets設定**
    - Streamlit Cloud管理画面で「Settings > Secrets」を選択
-   - `prompts_template.py` の例を参考にプロンプトを設定
-   - 以下の形式で設定:
-
-   ```toml
-   [prompts]
-   RULES_TEMPLATE = '''
-   # あなたの独自プロンプト
-   '''
-   QUESTION_TEMPLATE = '''
-   # 質問生成プロンプト
-   '''
-   # その他のプロンプト設定...
-   ```
+   - プロンプトを設定
 
 ## 💻 ローカル開発
 
@@ -70,7 +57,7 @@ LangChainとStreamlitを使った転職面接のロールプレイシステム�
 1. **リポジトリをクローン**
    ```bash
    git clone <repository-url>
-   cd 250815_mensetsu_rollplay_agent
+   cd mensetsu_rollplay
    ```
 
 2. **依存関係インストール**
@@ -79,8 +66,7 @@ LangChainとStreamlitを使った転職面接のロールプレイシステム�
    ```
 
 3. **プロンプトファイル作成**
-   - `prompts_template.py` を参考に `prompts.py` を作成
-   - 独自のプロンプトを定義
+   - `prompts.py` を作成し、独自のプロンプトを定義
 
 4. **アプリ起動**
    ```bash
@@ -93,10 +79,6 @@ LangChainとStreamlitを使った転職面接のロールプレイシステム�
 - `prompts.py` は `.gitignore` で除外されGitHubに公開されません
 - Streamlit Cloud では Secrets 機能を使用してプロンプトを管理
 - APIキーはユーザーが直接入力し、セッションでのみ保持
-
-### 本番運用での注意点
-- プロンプトの機密性を保つため、実際のプロンプトは公開リポジトリに含めないでください
-- Streamlit Cloud の Secrets は適切にアクセス制御されています
 
 ## 📋 技術スタック
 
