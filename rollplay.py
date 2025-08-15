@@ -6,11 +6,13 @@ import streamlit as st
 from secrets_config import get_prompts_from_secrets
 from interview_logic import (
     setup_llm, 
+    validate_api_key,
     add_newlines_by_period, 
     get_history_text,
     generate_question,
     judge_need_followup,
     generate_feedback,
+    generate_partial_feedback,
     get_rules
 )
 
@@ -46,6 +48,16 @@ def add_message(role, content):
         "role": role,
         "content": content
     })
+
+def reset_interview_session():
+    """面接セッションを完全にリセット"""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+
+def skip_to_feedback():
+    """フィードバック段階にスキップ"""
+    st.session_state.current_stage = "feedback"
+    st.session_state.is_interrupted = True
 
 # メイン関数
 def main():
@@ -145,6 +157,17 @@ def show_profile_form():
 def show_intro_stage():
     st.header("🎤 自己紹介")
     
+    # 中断ボタンを表示
+    col1, col2, col3 = st.columns([1, 1, 2])
+    with col1:
+        if st.button("🔄 最初からやり直し", help="APIキー入力から最初からやり直します"):
+            reset_interview_session()
+            st.rerun()
+    with col2:
+        if st.button("⏭️ フィードバックへスキップ", help="面接を中断してフィードバックを確認します"):
+            skip_to_feedback()
+            st.rerun()
+    
     intro_message = """それでは、最初にあなたの自己紹介を1分（400字程度）でお願いします。
 これまでのご経歴やスキルについても触れていただければと思います。"""
     
@@ -165,6 +188,17 @@ def show_intro_stage():
 
 def show_question_stage():
     st.header("❓ 面接質問")
+    
+    # 中断ボタンを表示
+    col1, col2, col3 = st.columns([1, 1, 2])
+    with col1:
+        if st.button("🔄 最初からやり直し", help="APIキー入力から最初からやり直します", key="restart_questions"):
+            reset_interview_session()
+            st.rerun()
+    with col2:
+        if st.button("⏭️ フィードバックへスキップ", help="面接を中断してフィードバックを確認します", key="skip_questions"):
+            skip_to_feedback()
+            st.rerun()
     
     # プロンプトデータを取得
     prompts = get_prompts_from_secrets()
@@ -252,14 +286,27 @@ def show_feedback_stage():
     prompts = get_prompts_from_secrets()
     evaluation_points_list = prompts["evaluation_points_list"]
     
+    # 中断フラグをチェック
+    is_interrupted = st.session_state.get("is_interrupted", False)
+    
     # フィードバック生成
     if "feedback_result" not in st.session_state:
         with st.spinner("フィードバックを生成中..."):
-            feedback_output = generate_feedback(
-                st.session_state.llm, 
-                evaluation_points_list, 
-                get_history_text(st.session_state.chat_history)
-            )
+            if is_interrupted:
+                # 中断された場合は部分的フィードバックを生成
+                feedback_output = generate_partial_feedback(
+                    st.session_state.llm, 
+                    evaluation_points_list, 
+                    get_history_text(st.session_state.chat_history)
+                )
+                st.info("💡 面接が途中で中断されたため、部分的なフィードバックを表示しています。")
+            else:
+                # 通常のフィードバックを生成
+                feedback_output = generate_feedback(
+                    st.session_state.llm, 
+                    evaluation_points_list, 
+                    get_history_text(st.session_state.chat_history)
+                )
             st.session_state.feedback_result = add_newlines_by_period(feedback_output)
     
     st.success("面接お疲れさまでした！")
