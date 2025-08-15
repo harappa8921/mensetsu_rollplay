@@ -1,0 +1,2 @@
+# mensetsu_rollplay
+LangChainを用いた面接ローププレイアプリ
