@@ -12,6 +12,7 @@ from interview_logic import (
     generate_question,
     judge_need_followup,
     generate_feedback,
+    generate_partial_feedback,
     get_rules
 )
 
@@ -47,6 +48,16 @@ def add_message(role, content):
         "role": role,
         "content": content
     })
+
+def reset_interview_session():
+    """面接セッションを完全にリセット"""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+
+def skip_to_feedback():
+    """フィードバック段階にスキップ"""
+    st.session_state.current_stage = "feedback"
+    st.session_state.is_interrupted = True
 
 # メイン関数
 def main():
@@ -151,7 +162,7 @@ def show_profile_form():
 
 def show_intro_stage():
     st.header("🎤 自己紹介")
-    
+        
     intro_message = """それでは、最初にあなたの自己紹介を1分（400字程度）でお願いします。
 これまでのご経歴やスキルについても触れていただければと思います。"""
     
@@ -169,6 +180,44 @@ def show_intro_stage():
             st.session_state.intro_given = True
             st.session_state.current_stage = "questions"
             st.rerun()
+
+    # 中断ボタンを右下に表示
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col2:
+        if st.button("最初からやり直し", help="APIキー入力から最初からやり直します"):
+            st.session_state.show_restart_confirm = True
+            st.rerun()
+    with col3:
+        if st.button("フィードバックへスキップ", help="面接を中断してフィードバックを確認します"):
+            st.session_state.show_skip_confirm = True
+            st.rerun()
+    
+    # 確認ダイアログの表示
+    if st.session_state.get("show_restart_confirm", False):
+        st.warning("⚠️ 最初からやり直しますか？")
+        col_confirm1, col_confirm2, col_confirm3 = st.columns([2, 1, 1])
+        with col_confirm2:
+            if st.button("はい", key="confirm_restart"):
+                st.session_state.show_restart_confirm = False
+                reset_interview_session()
+                st.rerun()
+        with col_confirm3:
+            if st.button("いいえ", key="cancel_restart"):
+                st.session_state.show_restart_confirm = False
+                st.rerun()
+    
+    if st.session_state.get("show_skip_confirm", False):
+        st.warning("⚠️ フィードバックへスキップしますか？")
+        col_confirm1, col_confirm2, col_confirm3 = st.columns([2, 1, 1])
+        with col_confirm2:
+            if st.button("はい", key="confirm_skip"):
+                st.session_state.show_skip_confirm = False
+                skip_to_feedback()
+                st.rerun()
+        with col_confirm3:
+            if st.button("いいえ", key="cancel_skip"):
+                st.session_state.show_skip_confirm = False
+                st.rerun()
 
 def show_question_stage():
     st.header("❓ 面接質問")
@@ -252,6 +301,44 @@ def show_question_stage():
         st.session_state.current_stage = "feedback"
         st.rerun()
 
+    # 中断ボタンを右下に表示
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col2:
+        if st.button("最初からやり直し", help="APIキー入力から最初からやり直します", key="restart_questions"):
+            st.session_state.show_restart_confirm_q = True
+            st.rerun()
+    with col3:
+        if st.button("フィードバックへスキップ", help="面接を中断してフィードバックを確認します", key="skip_questions"):
+            st.session_state.show_skip_confirm_q = True
+            st.rerun()
+    
+    # 確認ダイアログの表示
+    if st.session_state.get("show_restart_confirm_q", False):
+        st.warning("⚠️ 最初からやり直しますか？")
+        col_confirm1, col_confirm2, col_confirm3 = st.columns([2, 1, 1])
+        with col_confirm2:
+            if st.button("はい", key="confirm_restart_q"):
+                st.session_state.show_restart_confirm_q = False
+                reset_interview_session()
+                st.rerun()
+        with col_confirm3:
+            if st.button("いいえ", key="cancel_restart_q"):
+                st.session_state.show_restart_confirm_q = False
+                st.rerun()
+    
+    if st.session_state.get("show_skip_confirm_q", False):
+        st.warning("⚠️ フィードバックへスキップしますか？")
+        col_confirm1, col_confirm2, col_confirm3 = st.columns([2, 1, 1])
+        with col_confirm2:
+            if st.button("はい", key="confirm_skip_q"):
+                st.session_state.show_skip_confirm_q = False
+                skip_to_feedback()
+                st.rerun()
+        with col_confirm3:
+            if st.button("いいえ", key="cancel_skip_q"):
+                st.session_state.show_skip_confirm_q = False
+                st.rerun()
+
 def show_feedback_stage():
     st.header("📝 面接フィードバック")
     
@@ -259,14 +346,27 @@ def show_feedback_stage():
     prompts = get_prompts_from_secrets()
     evaluation_points_list = prompts["evaluation_points_list"]
     
+    # 中断フラグをチェック
+    is_interrupted = st.session_state.get("is_interrupted", False)
+    
     # フィードバック生成
     if "feedback_result" not in st.session_state:
         with st.spinner("フィードバックを生成中..."):
-            feedback_output = generate_feedback(
-                st.session_state.llm, 
-                evaluation_points_list, 
-                get_history_text(st.session_state.chat_history)
-            )
+            if is_interrupted:
+                # 中断された場合は部分的フィードバックを生成
+                feedback_output = generate_partial_feedback(
+                    st.session_state.llm, 
+                    evaluation_points_list, 
+                    get_history_text(st.session_state.chat_history)
+                )
+                st.info("💡 面接が途中で中断されたため、部分的なフィードバックを表示しています。")
+            else:
+                # 通常のフィードバックを生成
+                feedback_output = generate_feedback(
+                    st.session_state.llm, 
+                    evaluation_points_list, 
+                    get_history_text(st.session_state.chat_history)
+                )
             st.session_state.feedback_result = add_newlines_by_period(feedback_output)
     
     st.success("面接お疲れさまでした！")

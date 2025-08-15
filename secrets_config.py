@@ -14,6 +14,8 @@ def get_prompts_from_secrets():
         judge_template = st.secrets["prompts"]["JUDGE_TEMPLATE"]
         feedback_template = st.secrets["prompts"]["FEEDBACK_TEMPLATE"]
         evaluation_format = st.secrets["prompts"]["EVALUATION_FORMAT"]
+        partial_feedback_template = st.secrets["prompts"]["PARTIAL_FEEDBACK_TEMPLATE"]
+        partial_evaluation_format = st.secrets["prompts"]["PARTIAL_EVALUATION_FORMAT"]
         
         # 質問リストを辞書形式で取得
         questions_list = []
@@ -41,6 +43,8 @@ def get_prompts_from_secrets():
             "JUDGE_TEMPLATE": judge_template,
             "FEEDBACK_TEMPLATE": feedback_template,
             "EVALUATION_FORMAT": evaluation_format,
+            "PARTIAL_FEEDBACK_TEMPLATE": partial_feedback_template,
+            "PARTIAL_EVALUATION_FORMAT": partial_evaluation_format,
             "questions_list": questions_list,
             "evaluation_points_list": evaluation_points_list
         }
@@ -51,6 +55,7 @@ def get_prompts_from_secrets():
             from prompts import (
                 RULES_TEMPLATE, QUESTION_TEMPLATE, JUDGE_TEMPLATE, 
                 FEEDBACK_TEMPLATE, EVALUATION_FORMAT, 
+                PARTIAL_FEEDBACK_TEMPLATE, PARTIAL_EVALUATION_FORMAT,
                 questions_list, evaluation_points_list
             )
             return {
@@ -59,6 +64,8 @@ def get_prompts_from_secrets():
                 "JUDGE_TEMPLATE": JUDGE_TEMPLATE,
                 "FEEDBACK_TEMPLATE": FEEDBACK_TEMPLATE,
                 "EVALUATION_FORMAT": EVALUATION_FORMAT,
+                "PARTIAL_FEEDBACK_TEMPLATE": PARTIAL_FEEDBACK_TEMPLATE,
+                "PARTIAL_EVALUATION_FORMAT": PARTIAL_EVALUATION_FORMAT,
                 "questions_list": questions_list,
                 "evaluation_points_list": evaluation_points_list
             }
