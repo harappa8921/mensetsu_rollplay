@@ -25,6 +25,40 @@ def get_rules(profile):
         target_job=profile["target_job"]
     )
 
+def validate_api_key(api_key):
+    """APIキーの有効性を検証"""
+    if not api_key or not api_key.startswith("sk-"):
+        return False, "有効なOpenAI APIキーを入力してください（sk-で始まる必要があります）"
+    
+    try:
+        # 簡単なテスト用のLLMインスタンスを作成
+        test_llm = ChatOpenAI(
+            model="gpt-4o-mini",  # より安価なモデルでテスト
+            temperature=0,
+            openai_api_key=api_key,
+            max_tokens=10
+        )
+        
+        # 最小限のテスト呼び出し
+        test_prompt = ChatPromptTemplate.from_template("こんにちは")
+        test_chain = test_prompt | test_llm | StrOutputParser()
+        
+        # APIキーテスト実行
+        test_chain.invoke({})
+        
+        return True, "APIキーが正常に検証されました"
+        
+    except Exception as e:
+        error_msg = str(e)
+        if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():
+            return False, "APIキーが無効です。正しいOpenAI APIキーを入力してください"
+        elif "quota" in error_msg.lower() or "billing" in error_msg.lower():
+            return False, "APIキーのクォータまたは請求設定に問題があります"
+        elif "rate_limit" in error_msg.lower():
+            return False, "レート制限に達しています。しばらく待ってから再試行してください"
+        else:
+            return False, f"APIキーの検証中にエラーが発生しました: {error_msg}"
+
 def setup_llm(api_key):
     """LLMセットアップ"""
     if not api_key:
