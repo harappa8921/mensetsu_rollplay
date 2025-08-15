@@ -116,13 +116,28 @@ def judge_need_followup(llm, history):
 
 def generate_feedback(llm, evaluation_points_list, history):
     """フィードバックを生成"""
-    from prompts import FEEDBACK_TEMPLATE, EVALUATION_FORMAT
+    from secrets_config import get_prompts_from_secrets
+    prompts = get_prompts_from_secrets()
     
-    feedback_prompt = ChatPromptTemplate.from_template(FEEDBACK_TEMPLATE)
+    feedback_prompt = ChatPromptTemplate.from_template(prompts["FEEDBACK_TEMPLATE"])
     feedback_chain = feedback_prompt | llm | StrOutputParser()
     
     return feedback_chain.invoke({
         "evaluation_points_list": evaluation_points_list,
-        "evaluation_format": EVALUATION_FORMAT,
+        "evaluation_format": prompts["EVALUATION_FORMAT"],
+        "history": history
+    })
+
+def generate_partial_feedback(llm, evaluation_points_list, history):
+    """部分的なフィードバックを生成（面接中断時用）"""
+    from secrets_config import get_prompts_from_secrets
+    prompts = get_prompts_from_secrets()
+    
+    feedback_prompt = ChatPromptTemplate.from_template(prompts["PARTIAL_FEEDBACK_TEMPLATE"])
+    feedback_chain = feedback_prompt | llm | StrOutputParser()
+    
+    return feedback_chain.invoke({
+        "evaluation_points_list": evaluation_points_list,
+        "evaluation_format": prompts["PARTIAL_EVALUATION_FORMAT"],
         "history": history
     })
