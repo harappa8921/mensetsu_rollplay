@@ -17,25 +17,20 @@ def get_prompts_from_secrets():
         partial_feedback_template = st.secrets["prompts"]["PARTIAL_FEEDBACK_TEMPLATE"]
         partial_evaluation_format = st.secrets["prompts"]["PARTIAL_EVALUATION_FORMAT"]
         
-        # 質問リストを辞書形式で取得
+        # 質問リストを新しいTOML配列形式で取得
         questions_list = []
-        for i in range(4):  # 4つの質問があることを前提
-            question_key = f"QUESTION_{i+1}"
-            if question_key in st.secrets["prompts"]:
-                question_data = st.secrets["prompts"][question_key]
+        if "questions_list" in st.secrets["prompts"]:
+            for question_data in st.secrets["prompts"]["questions_list"]:
                 questions_list.append({
                     "title": question_data["title"],
-                    "point_keys": question_data["point_keys"].split(","),
+                    "point_keys": question_data["point_keys"],
                     "content": question_data["content"]
                 })
         
-        # 評価ポイントリストを辞書形式で取得
+        # 評価ポイントリストを新しいTOMLテーブル形式で取得
         evaluation_points_list = {}
-        eval_keys = ["コミュニケーション力", "定着性", "課題解決力", "自走力", "スキル"]
-        for key in eval_keys:
-            secret_key = f"EVAL_{key}"
-            if secret_key in st.secrets["prompts"]:
-                evaluation_points_list[key] = st.secrets["prompts"][secret_key]
+        if "evaluation_points_list" in st.secrets["prompts"]:
+            evaluation_points_list = dict(st.secrets["prompts"]["evaluation_points_list"])
         
         return {
             "RULES_TEMPLATE": rules_template,
