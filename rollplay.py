@@ -267,12 +267,20 @@ def show_welcome_screen():
     for i, step in enumerate(flow_steps, 1):
         st.markdown(f"{i}. {step}")
     
-    # 注意事項
+    # 料金とご利用について
+    st.warning("""
+    **💰 料金について（重要）**
+    - **1回の面接で約10円**のAPI利用料がかかります
+    - 回答の長さやAPI利用状況、為替変動により料金は前後する可能性があります
+    - **ご利用料金はお客様ご自身でご負担**いただきます
+    """)
+    
     st.info("""
-    **ご利用にあたって**
+    **📋 ご利用にあたって**
     - OpenAI APIキーが必要です（従量課金制）
     - 面接は途中で中断して再開することも可能です
-    - すべてのデータは安全に処理され、外部に保存されません
+    - APIキーはセッション終了時に自動的に破棄されます
+    - すべてのデータは外部に保存されません
     """)
     
     # 開始ボタン
@@ -287,6 +295,15 @@ def show_api_key_form():
     st.header("OpenAI APIキー設定")
     
     st.info("面接ロールプレイを開始するには、OpenAI APIキーが必要です。")
+    
+    # 料金についての警告
+    st.warning("""
+    **💰 料金のご注意**
+    
+    **1回の面接で約10円**のAPI利用料がかかります。
+    
+    料金はお客様のOpenAIアカウントに直接課金されます。回答の長さやAPI利用状況、為替変動により料金は前後する可能性があります。
+    """)
     
     st.markdown("""
     **APIキーの取得方法:**
@@ -303,7 +320,7 @@ def show_api_key_form():
             "OpenAI APIキーを入力してください",
             type="password",
             placeholder="sk-...",
-            help="APIキーは安全に暗号化されて処理されます"
+            help="APIキーはセッション終了時に自動的に破棄されます"
         )
         
         submit_button = st.form_submit_button("APIキーを設定")
