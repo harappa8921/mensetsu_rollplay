@@ -28,7 +28,7 @@ def init_session_state():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     if "current_stage" not in st.session_state:
-        st.session_state.current_stage = "api_key"
+        st.session_state.current_stage = "welcome"
     if "profile" not in st.session_state:
         st.session_state.profile = {}
     if "current_question" not in st.session_state:
@@ -65,8 +65,12 @@ def main():
     
     st.title("👨‍💼 面接ロールプレイ")
     
+    # ウェルカム画面
+    if st.session_state.current_stage == "welcome":
+        show_welcome_screen()
+    
     # APIキー入力段階
-    if st.session_state.current_stage == "api_key":
+    elif st.session_state.current_stage == "api_key":
         show_api_key_form()
     
     # プロフィール入力段階
@@ -85,8 +89,79 @@ def main():
     elif st.session_state.current_stage == "feedback":
         show_feedback_stage()
 
+def show_welcome_screen():
+    st.header("面接ロールプレイシステムへようこそ")
+    
+    st.markdown("""
+    このアプリケーションは、**転職面接の練習**を本格的にサポートするシステムです。
+    AIが面接官となり、あなたの背景に合わせたリアルな面接体験を提供します。
+    """)
+    
+    # 機能説明
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("主な機能")
+        st.markdown("""
+        **パーソナライズされた面接体験**
+        - あなたの**年齢、現在の職種、転職希望先**を考慮
+        - **業界や職種に特化**した質問を生成
+        - 経験レベルに応じた適切な難易度設定
+        
+        **リアルな面接フロー**
+        - 自己紹介から始まる本格的な面接進行
+        - 深掘り質問による詳細な評価
+        - 実際の面接と同様の緊張感を体験
+        """)
+    
+    with col2:
+        st.subheader("充実したフィードバック")
+        st.markdown("""
+        **5段階評価システム**
+        - コミュニケーション力
+        - 定着性
+        - 課題解決力
+        - 自走力（主体性）
+        - 専門スキル
+        
+        **具体的な改善提案**
+        - 良かった点と改善点を明確に指摘
+        - 総合的な合否判定
+        - 次回面接への具体的アドバイス
+        """)
+    
+    # 流れの説明
+    st.subheader("面接の流れ")
+    
+    flow_steps = [
+        "**APIキー設定** - OpenAI APIキーを入力（安全に暗号化処理）",
+        "**プロフィール入力** - 年齢、現職、転職希望などの基本情報",
+        "**自己紹介** - 1分程度での自己PR",
+        "**面接質問** - 4つのカテゴリから厳選された質問（深掘りあり）",
+        "**フィードバック** - 詳細な評価と改善アドバイス"
+    ]
+    
+    for i, step in enumerate(flow_steps, 1):
+        st.markdown(f"{i}. {step}")
+    
+    # 注意事項
+    st.info("""
+    **ご利用にあたって**
+    - OpenAI APIキーが必要です（従量課金制）
+    - 面接は途中で中断して再開することも可能です
+    - すべてのデータは安全に処理され、外部に保存されません
+    """)
+    
+    # 開始ボタン
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("面接を開始する", type="primary", use_container_width=True):
+            st.session_state.current_stage = "api_key"
+            st.rerun()
+
 def show_api_key_form():
-    st.header("🔑 OpenAI APIキー設定")
+    st.header("OpenAI APIキー設定")
     
     st.info("面接ロールプレイを開始するには、OpenAI APIキーが必要です。")
     
@@ -131,7 +206,7 @@ def show_api_key_form():
                 st.error("APIキーを入力してください")
 
 def show_profile_form():
-    st.header("📝 プロフィール入力")
+    st.header("プロフィール入力")
     
     with st.form("profile_form"):
         age = st.text_input("年齢", placeholder="例：28")
@@ -161,7 +236,7 @@ def show_profile_form():
                 st.error("すべての項目を入力してください。")
 
 def show_intro_stage():
-    st.header("🎤 自己紹介")
+    st.header("自己紹介")
         
     intro_message = """それでは、最初にあなたの自己紹介を1分（400字程度）でお願いします。
 これまでのご経歴やスキルについても触れていただければと思います。"""
@@ -220,7 +295,7 @@ def show_intro_stage():
                 st.rerun()
 
 def show_question_stage():
-    st.header("❓ 面接質問")
+    st.header("面接質問")
     
     # プロンプトデータを取得
     prompts = get_prompts_from_secrets()
@@ -340,7 +415,7 @@ def show_question_stage():
                 st.rerun()
 
 def show_feedback_stage():
-    st.header("📝 面接フィードバック")
+    st.header("面接フィードバック")
     
     # プロンプトデータを取得
     prompts = get_prompts_from_secrets()
