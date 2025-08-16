@@ -59,6 +59,94 @@ def skip_to_feedback():
     st.session_state.current_stage = "feedback"
     st.session_state.is_interrupted = True
 
+def format_feedback_display(feedback_text):
+    """フィードバックテキストを見やすく整形して表示"""
+    lines = feedback_text.split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # 合否結果の表示
+        if '合否結果：' in line:
+            result = line.split('合否結果：')[1].strip()
+            if '即合格' in result:
+                st.success(f"**合否結果**: {result}")
+            elif '合格' in result and '不合格' not in result:
+                st.success(f"**合否結果**: {result}")
+            elif 'ボーダー' in result:
+                st.warning(f"**合否結果**: {result}")
+            elif '不合格' in result:
+                st.error(f"**合否結果**: {result}")
+            else:
+                st.info(f"**合否結果**: {result}")
+            st.markdown("---")
+            continue
+        
+        # 評価項目の表示
+        if any(skill in line for skill in ['コミュニケーション力：', '定着性：', '課題解決力：', '自走力：', 'スキル：']):
+            # 星評価を抽出
+            if '★' in line:
+                skill_name = line.split('：')[0]
+                rest = line.split('：')[1]
+                
+                # 星の数を数える
+                star_count = rest.count('★')
+                total_stars = rest.count('★') + rest.count('☆')
+                
+                # 評価レベルを色分け
+                if star_count >= 4:
+                    color = "🟢"
+                elif star_count >= 3:
+                    color = "🟡"
+                elif star_count >= 2:
+                    color = "🟠"
+                else:
+                    color = "🔴"
+                
+                st.markdown(f"### {color} **{skill_name}**")
+                
+                # 星評価の表示
+                stars = '★' * star_count + '☆' * (total_stars - star_count)
+                st.markdown(f"**評価**: {stars} ({star_count}/{total_stars})")
+                
+                # 良かった点と改善点の抽出
+                if '良かった点：' in rest and '改善点：' in rest:
+                    good_part = rest.split('良かった点：')[1].split('改善点：')[0].strip()
+                    improve_part = rest.split('改善点：')[1].strip()
+                    
+                    if good_part and good_part != '～' and good_part != '':
+                        st.markdown(f"**✅ 良かった点**: {good_part}")
+                    if improve_part and improve_part != '～' and improve_part != '':
+                        st.markdown(f"**🔄 改善点**: {improve_part}")
+                
+                st.markdown("")  # 空行
+            else:
+                # 「評価なし」の場合
+                skill_name = line.split('：')[0]
+                st.markdown(f"### ⚪ **{skill_name}**")
+                st.markdown("**評価**: 評価なし（回答がないため評価できません）")
+                st.markdown("")
+            continue
+        
+        # 総評の表示
+        if '総評：' in line:
+            comment = line.split('総評：')[1].strip()
+            st.markdown("---")
+            st.subheader("総評")
+            st.markdown(f"*{comment}*")
+            continue
+        
+        # その他のセクションヘッダー
+        if line.startswith('- ') and ('フィードバック' in line or '評価：' in line):
+            st.subheader("詳細評価")
+            continue
+        
+        # 通常のテキスト
+        if line and not line.startswith('-'):
+            st.markdown(line)
+
 # メイン関数
 def main():
     init_session_state()
@@ -434,7 +522,7 @@ def show_feedback_stage():
                     evaluation_points_list, 
                     get_history_text(st.session_state.chat_history)
                 )
-                st.info("💡 面接が途中で中断されたため、部分的なフィードバックを表示しています。")
+                st.info("面接が途中で中断されたため、部分的なフィードバックを表示しています。")
             else:
                 # 通常のフィードバックを生成
                 feedback_output = generate_feedback(
@@ -445,14 +533,19 @@ def show_feedback_stage():
             st.session_state.feedback_result = add_newlines_by_period(feedback_output)
     
     st.success("面接お疲れさまでした！")
-    st.write(st.session_state.feedback_result)
+    
+    # フィードバックを整形して表示
+    format_feedback_display(st.session_state.feedback_result)
     
     # 新しい面接を開始するボタン
-    if st.button("新しい面接を開始"):
-        # セッション状態をリセット
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("新しい面接を開始", type="primary", use_container_width=True):
+            # セッション状態をリセット
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
 if __name__ == "__main__":
     main()
