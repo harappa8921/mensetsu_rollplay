@@ -54,14 +54,66 @@ def reset_interview_session():
     for key in list(st.session_state.keys()):
         del st.session_state[key]
 
+def restart_interview():
+    """面接を再開（プロフィール情報は保持）"""
+    # プロフィール情報を保存
+    saved_profile = st.session_state.get("profile", {}).copy()
+    saved_api_key = st.session_state.get("api_key", "")
+    saved_llm = st.session_state.get("llm", None)
+    
+    # セッション状態をリセット
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    
+    # 保存した情報を復元
+    st.session_state.profile = saved_profile
+    st.session_state.api_key = saved_api_key
+    st.session_state.llm = saved_llm
+    st.session_state.current_stage = "profile"
+
 def skip_to_feedback():
     """フィードバック段階にスキップ"""
     st.session_state.current_stage = "feedback"
     st.session_state.is_interrupted = True
 
+def clean_question_text(question_text):
+    """質問文から余計な履歴を除去して純粋な質問のみを抽出"""
+    # 「面接官：」以降の部分を抽出
+    if "面接官：" in question_text:
+        # 最後の「面接官：」以降を取得
+        parts = question_text.split("面接官：")
+        if len(parts) > 1:
+            return parts[-1].strip()
+    
+    # 「面接官：」がない場合、改行で分割して最後の質問部分を取得
+    lines = question_text.strip().split('\n')
+    
+    # 自己紹介や履歴部分を除去して質問部分を探す
+    for i in range(len(lines) - 1, -1, -1):
+        line = lines[i].strip()
+        # 質問文の特徴を持つ行を探す
+        if line and ('？' in line or 'か？' in line or 'ですか' in line or 'ください' in line):
+            # その行から質問部分を抽出
+            if '？' in line:
+                question_parts = line.split('？')
+                if len(question_parts) >= 2:
+                    # 最後の「？」までを質問として扱う
+                    return '？'.join(question_parts[:-1]) + '？'
+            return line
+    
+    # 最後の手段として、最後の文を返す
+    if lines:
+        return lines[-1].strip()
+    
+    return question_text.strip()
+
 def format_feedback_display(feedback_text):
     """フィードバックテキストを見やすく整形して表示"""
     lines = feedback_text.split('\n')
+    
+    # 詳細評価セクションの開始を検出
+    in_evaluation_section = False
+    evaluation_lines = []
     
     for line in lines:
         line = line.strip()
@@ -84,68 +136,51 @@ def format_feedback_display(feedback_text):
             st.markdown("---")
             continue
         
-        # 評価項目の表示
-        if any(skill in line for skill in ['コミュニケーション力：', '定着性：', '課題解決力：', '自走力：', 'スキル：']):
-            # 星評価を抽出
-            if '★' in line:
-                skill_name = line.split('：')[0]
-                rest = line.split('：')[1]
-                
-                # 星の数を数える
-                star_count = rest.count('★')
-                total_stars = rest.count('★') + rest.count('☆')
-                
-                # 評価レベルを色分け
-                if star_count >= 4:
-                    color = "🟢"
-                elif star_count >= 3:
-                    color = "🟡"
-                elif star_count >= 2:
-                    color = "🟠"
-                else:
-                    color = "🔴"
-                
-                st.markdown(f"### {color} **{skill_name}**")
-                
-                # 星評価の表示
-                stars = '★' * star_count + '☆' * (total_stars - star_count)
-                st.markdown(f"**評価**: {stars} ({star_count}/{total_stars})")
-                
-                # 良かった点と改善点の抽出
-                if '良かった点：' in rest and '改善点：' in rest:
-                    good_part = rest.split('良かった点：')[1].split('改善点：')[0].strip()
-                    improve_part = rest.split('改善点：')[1].strip()
-                    
-                    if good_part and good_part != '～' and good_part != '':
-                        st.markdown(f"**✅ 良かった点**: {good_part}")
-                    if improve_part and improve_part != '～' and improve_part != '':
-                        st.markdown(f"**🔄 改善点**: {improve_part}")
-                
-                st.markdown("")  # 空行
-            else:
-                # 「評価なし」の場合
-                skill_name = line.split('：')[0]
-                st.markdown(f"### ⚪ **{skill_name}**")
-                st.markdown("**評価**: 評価なし（回答がないため評価できません）")
-                st.markdown("")
+        # 評価セクションの開始を検出
+        if line.startswith('- ') and ('評価：' in line or 'フィードバック' in line):
+            if '評価：' in line:
+                st.subheader("詳細評価")
+                in_evaluation_section = True
             continue
         
-        # 総評の表示
+        # 評価セクション内の処理
+        if in_evaluation_section:
+            # 総評の開始で評価セクション終了
+            if '総評：' in line:
+                # 蓄積された評価内容を表示
+                if evaluation_lines:
+                    evaluation_text = '\n'.join(evaluation_lines)
+                    st.markdown(evaluation_text)
+                
+                # 総評を表示
+                comment = line.split('総評：')[1].strip()
+                st.markdown("---")
+                st.subheader("総評")
+                st.markdown(f"{comment}")
+                in_evaluation_section = False
+                evaluation_lines = []
+                continue
+            else:
+                # 評価内容を蓄積
+                evaluation_lines.append(line)
+                continue
+        
+        # 総評の表示（評価セクション外の場合）
         if '総評：' in line:
             comment = line.split('総評：')[1].strip()
             st.markdown("---")
-            st.subheader("総評")
-            st.markdown(f"*{comment}*")
-            continue
-        
-        # その他のセクションヘッダー
-        if line.startswith('- ') and ('フィードバック' in line or '評価：' in line):
-            st.subheader("詳細評価")
+            st.subheader("📝 総評")
+            st.markdown(f"{comment}")
             continue
         
         # 通常のテキスト
         if line and not line.startswith('-'):
             st.markdown(line)
+    
+    # 評価セクションが最後まで続いた場合の処理
+    if in_evaluation_section and evaluation_lines:
+        evaluation_text = '\n'.join(evaluation_lines)
+        st.markdown(evaluation_text)
 
 # メイン関数
 def main():
@@ -296,14 +331,17 @@ def show_api_key_form():
 def show_profile_form():
     st.header("プロフィール入力")
     
+    # 既存のプロフィール情報を取得
+    existing_profile = st.session_state.get("profile", {})
+    
     with st.form("profile_form"):
-        age = st.text_input("年齢", placeholder="例：28")
-        current_gyokai = st.text_input("現在の業界", placeholder="例：IT")
-        current_job = st.text_input("現在の職種", placeholder="例：エンジニア")
-        target_job = st.text_input("志望している職種", placeholder="例：データサイエンティスト")
-        role = st.text_input("現在の業務の役割", placeholder="例：メンバー、リーダー、マネージャー")
-        experience_years = st.text_input("現在の業務の経験年数", placeholder="例：3年")
-        target_gyokai = st.text_input("転職を希望している業界", placeholder="例：コンサルティング")
+        age = st.text_input("年齢", value=existing_profile.get("age", ""), placeholder="例：28")
+        current_gyokai = st.text_input("現在の業界", value=existing_profile.get("current_gyokai", ""), placeholder="例：IT")
+        current_job = st.text_input("現在の職種", value=existing_profile.get("current_job", ""), placeholder="例：エンジニア")
+        target_job = st.text_input("志望している職種", value=existing_profile.get("target_job", ""), placeholder="例：データサイエンティスト")
+        role = st.text_input("現在の業務の役割", value=existing_profile.get("role", ""), placeholder="例：メンバー、リーダー、マネージャー")
+        experience_years = st.text_input("現在の業務の経験年数", value=existing_profile.get("experience_years", ""), placeholder="例：3年")
+        target_gyokai = st.text_input("転職を希望している業界", value=existing_profile.get("target_gyokai", ""), placeholder="例：コンサルティング")
         
         submit_button = st.form_submit_button("面接開始")
         
@@ -416,9 +454,11 @@ def show_question_stage():
                 st.session_state[f"question_{st.session_state.current_question}"] = output
         
         current_question = st.session_state[f"question_{st.session_state.current_question}"]
+        # 質問文をクリーニング
+        cleaned_question = clean_question_text(current_question)
         
         st.info("👨‍💼 面接官からの質問")
-        st.write(add_newlines_by_period(current_question))
+        st.write(add_newlines_by_period(cleaned_question))
         
         # 回答フォーム
         with st.form(f"answer_form_{st.session_state.current_question}_{st.session_state.depth_count}"):
@@ -426,32 +466,46 @@ def show_question_stage():
             submit_answer = st.form_submit_button("回答を送信")
             
             if submit_answer and user_answer:
-                # チャット履歴に保存
-                add_message("assistant", current_question)
+                # チャット履歴に保存（クリーニングした質問を使用）
+                add_message("assistant", cleaned_question)
                 add_message("user", user_answer)
                 
-                # 深掘り判定
-                with st.spinner("回答を評価中..."):
-                    judge_result = judge_need_followup(st.session_state.llm, get_history_text(st.session_state.chat_history))
-                
-                # 深掘り質問の判定（最大3回まで）
-                if judge_result == "Yes" and st.session_state.depth_count < 3:
-                    st.session_state.depth_count += 1
+                # 深掘り質問の判定（最低1回は必須、最大3回まで）
+                if st.session_state.depth_count < 3:
+                    # 最初の1回は必ず深掘り、2回目以降はAIが判定
+                    if st.session_state.depth_count == 0:
+                        should_followup = True
+                    else:
+                        with st.spinner("回答を評価中..."):
+                            judge_result = judge_need_followup(st.session_state.llm, get_history_text(st.session_state.chat_history))
+                            should_followup = (judge_result == "Yes")
                     
-                    # 深掘り質問生成
-                    with st.spinner("深掘り質問を生成中..."):
-                        followup_output = generate_question(
-                            st.session_state.llm,
-                            get_rules(st.session_state.profile),
-                            "上記に対する深掘り質問を1つ出力してください。",
-                            evaluation_points,
-                            get_history_text(st.session_state.chat_history)
-                        )
-                        st.session_state[f"question_{st.session_state.current_question}"] = followup_output
-                    
-                    st.rerun()
+                    if should_followup:
+                        st.session_state.depth_count += 1
+                        
+                        # 深掘り質問生成
+                        with st.spinner("深掘り質問を生成中..."):
+                            followup_output = generate_question(
+                                st.session_state.llm,
+                                get_rules(st.session_state.profile),
+                                "上記に対する深掘り質問を1つ出力してください。",
+                                evaluation_points,
+                                get_history_text(st.session_state.chat_history)
+                            )
+                            st.session_state[f"question_{st.session_state.current_question}"] = followup_output
+                        
+                        st.rerun()
+                    else:
+                        # 次の質問へ
+                        st.session_state.current_question += 1
+                        st.session_state.depth_count = 0
+                        
+                        if st.session_state.current_question >= len(questions_list):
+                            st.session_state.current_stage = "feedback"
+                        
+                        st.rerun()
                 else:
-                    # 次の質問へ
+                    # 最大回数に達したので次の質問へ
                     st.session_state.current_question += 1
                     st.session_state.depth_count = 0
                     
@@ -542,9 +596,8 @@ def show_feedback_stage():
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         if st.button("新しい面接を開始", type="primary", use_container_width=True):
-            # セッション状態をリセット
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
+            # プロフィール情報を保持して面接を再開
+            restart_interview()
             st.rerun()
 
 if __name__ == "__main__":
