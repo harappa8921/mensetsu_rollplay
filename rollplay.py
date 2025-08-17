@@ -447,7 +447,14 @@ def show_question_stage():
     
     # 進捗表示
     progress = (st.session_state.current_question + 1) / len(questions_list)
-    st.progress(progress, f"質問 {st.session_state.current_question + 1} / {len(questions_list)}")
+    
+    # 深掘り回数の表示を追加
+    if st.session_state.depth_count > 0:
+        depth_info = f" - 深掘り質問{st.session_state.depth_count}回目（最大3回）"
+    else:
+        depth_info = ""
+    
+    st.progress(progress, f"質問 {st.session_state.current_question + 1} / {len(questions_list)}{depth_info}")
     
     if st.session_state.current_question < len(questions_list):
         selected_q = questions_list[st.session_state.current_question]
