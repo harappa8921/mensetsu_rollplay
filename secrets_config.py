@@ -5,8 +5,21 @@ Streamlit Secrets設定用のプロンプト管理
 
 import streamlit as st
 
+# プロンプトデータをStreamlit Secretsまたはローカルファイルから取得する関数
 def get_prompts_from_secrets():
-    """Streamlit secretsからプロンプトデータを取得"""
+    """
+    Streamlit Cloud環境では st.secrets から、ローカル環境では prompts.py から
+    プロンプトデータを読み込む。フォールバック機能により両環境で動作可能。
+    
+    Returns:
+        dict: プロンプトテンプレート、質問リスト、評価ポイントを含む辞書
+              - RULES_TEMPLATE: 面接ルールのプロンプト
+              - QUESTION_TEMPLATE: 質問生成用プロンプト
+              - JUDGE_TEMPLATE: 深掘り判定用プロンプト
+              - FEEDBACK_TEMPLATE: フィードバック生成用プロンプト
+              - questions_list: 質問カテゴリのリスト
+              - evaluation_points_list: 評価軸の辞書
+    """
     try:
         # Streamlit Cloud環境での設定
         rules_template = st.secrets["prompts"]["RULES_TEMPLATE"]
