@@ -106,9 +106,10 @@ def generate_question(llm, rules, question_content, evaluation_points, history):
 
 def judge_need_followup(llm, history):
     """深掘り質問が必要かを判定"""
-    from prompts import JUDGE_TEMPLATE
+    from secrets_config import get_prompts_from_secrets
+    prompts = get_prompts_from_secrets()
     
-    judge_prompt = ChatPromptTemplate.from_template(JUDGE_TEMPLATE)
+    judge_prompt = ChatPromptTemplate.from_template(prompts["JUDGE_TEMPLATE"])
     judge_chain = judge_prompt | llm | StrOutputParser()
     
     return judge_chain.invoke({"history": history}).strip()
