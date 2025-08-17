@@ -42,20 +42,20 @@ def init_session_state():
     if "llm" not in st.session_state:
         st.session_state.llm = None
 
+# チャット履歴にメッセージを追加する関数
 def add_message(role, content):
-    """チャット履歴にメッセージを追加"""
     st.session_state.chat_history.append({
         "role": role,
         "content": content
     })
 
+# 面接セッションを完全にリセットする関数
 def reset_interview_session():
-    """面接セッションを完全にリセット"""
     for key in list(st.session_state.keys()):
         del st.session_state[key]
 
+# プロフィール情報を保持して面接を再開する関数
 def restart_interview():
-    """面接を再開（プロフィール情報は保持）"""
     # プロフィール情報を保存
     saved_profile = st.session_state.get("profile", {}).copy()
     saved_api_key = st.session_state.get("api_key", "")
@@ -71,13 +71,13 @@ def restart_interview():
     st.session_state.llm = saved_llm
     st.session_state.current_stage = "profile"
 
+# フィードバック段階にスキップする関数（面接中断時用）
 def skip_to_feedback():
-    """フィードバック段階にスキップ"""
     st.session_state.current_stage = "feedback"
     st.session_state.is_interrupted = True
 
+# 質問文から余計な履歴を除去して純粋な質問のみを抽出する関数
 def clean_question_text(question_text):
-    """質問文から余計な履歴を除去して純粋な質問のみを抽出"""
     # 「面接官：」以降の部分を抽出
     if "面接官：" in question_text:
         # 最後の「面接官：」以降を取得
@@ -107,8 +107,8 @@ def clean_question_text(question_text):
     
     return question_text.strip()
 
+# フィードバックテキストを解析してStreamlitに綺麗に表示する関数
 def format_feedback_display(feedback_text):
-    """フィードバックテキストを見やすく整形して表示"""
     lines = feedback_text.split('\n')
     
     # 詳細評価セクションの開始を検出
@@ -212,6 +212,7 @@ def main():
     elif st.session_state.current_stage == "feedback":
         show_feedback_stage()
 
+# アプリのウェルカム画面を表示する関数
 def show_welcome_screen():
     st.header("面接ロールプレイシステムへようこそ")
     
@@ -291,6 +292,7 @@ def show_welcome_screen():
             st.session_state.current_stage = "api_key"
             st.rerun()
 
+# OpenAI APIキー入力フォームを表示する関数
 def show_api_key_form():
     st.header("OpenAI APIキー設定")
     
@@ -310,7 +312,8 @@ def show_api_key_form():
     1. [OpenAI Platform](https://platform.openai.com/api-keys) にアクセス
     2. アカウントにログインまたは新規登録
     3. 「Create new secret key」をクリック
-    4. 生成されたAPIキーをコピー
+    4. 生成されたAPIキーをコピーしてペースト
+    5. 初回のみ右上Settings(歯車マーク)を押してBillingから支払方法を設定
     
     💡 **ヒント:** APIキーは「sk-」で始まる文字列です
     """)
@@ -345,6 +348,7 @@ def show_api_key_form():
             else:
                 st.error("APIキーを入力してください")
 
+# ユーザーのプロフィール情報入力フォームを表示する関数
 def show_profile_form():
     st.header("プロフィール入力")
     
@@ -378,6 +382,7 @@ def show_profile_form():
             else:
                 st.error("すべての項目を入力してください。")
 
+# 自己紹介ステージを表示する関数
 def show_intro_stage():
     st.header("自己紹介")
         
@@ -437,6 +442,7 @@ def show_intro_stage():
                 st.session_state.show_skip_confirm = False
                 st.rerun()
 
+# 面接質問ステージを表示する関数（メインの面接フロー）
 def show_question_stage():
     st.header("面接質問")
     
@@ -580,6 +586,7 @@ def show_question_stage():
                 st.session_state.show_skip_confirm_q = False
                 st.rerun()
 
+# フィードバック表示ステージを表示する関数
 def show_feedback_stage():
     st.header("面接フィードバック")
     
